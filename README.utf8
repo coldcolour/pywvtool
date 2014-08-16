@@ -1,0 +1,43 @@
+pywvtool是python版本的wvtool, http://sourceforge.net/projects/wvtool/http://sourceforge.net/projects/wvtool/，用于将文本表示成特征向量。
+
+一个特征一般是文本中抽取出来的，经过处理的Token。一个特征代表一个向量维度，在这个维度上的分量可以由多种weighting算法生成。文本转化成为特征向量后，方便进行后续的挖掘处理，比如分类、聚类等等。libsvm使用的svm格式，weka使用的arff格式，clusto使用的tsv格式，都是特征向量的存储格式的变种。
+
+pywvtool的设计与wvtool大体上相同，分成loader, input filter, tokenizer, word filter, stemmer等5个部分（移除了原设计中的charmapper模块）。这几个模块串行起来对输入的文本流进行处理。
+
+模块    说明    实现
+loader  从不同来源装入文本，根据指定encoding译码，输出unicode文本流 
+
+    * LocalFileLoader：从本地文本文件中装入；
+    * LocalFilelistLoader：从本地一个文本文件中装入若干文件的路径列表，一行一个路径；
+    * WebLoader：读取一个url对应的网页
+
+input filter    用于过滤loader的输入，解析文本的格式，比如xml/html/pdf等等  
+
+    * TagRemoverFilter：移除类xml的tag，如果安装了BeautifulSoup则使用，如果没有采用正则表达式；
+    * TagWeightingFilter：根据配置，对于不同的tag采用不同的权重，可能采用复写方法
+
+tokenizer   传统意义上的分词模块    
+
+    * ChunkTokenizer：根据标点粗切分，一般与其它联用
+    * NGramTokenizer：切分成n-gram块
+    * CharTokenizer：1-gram
+    * ABTokenizer：使用ABWord切词
+    * MMSegTokenizer：使用MMSeg模块切词
+
+word filter 停用词过滤  
+
+    * DummyWordFilter：不过滤
+    * StopListWordFilter：根据停用词表过滤
+
+stemmer 提取词干算法，中文不需要    
+
+    * PorterStemmer：Porter算法
+
+
+
+算法流程分两步。第一步利用上述的components将文本解离成为一个个token，产生词表，统计局步词频等，并记录中间结果。第二步进行简单的特征选择（比如df），产生最终词表，计算全局权重，最终的word vector文件(.wv)。工具的输出还有一些副产品，比如倒排索引、每篇文档内部词频统计等。
+
+.wv的格式是：一行一个文档，行内docid featureid:weight featureid:weight...
+docid和原始输入对应关系在.docinfo中记录，feature和id对应在.dic中记录。
+
+产生.wv文件后，采用工具convert.py将其转换成其它格式使用。目前支持libsvm及arff格式。
